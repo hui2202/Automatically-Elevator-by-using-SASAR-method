@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SARSA Elevator Simulation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #2b2b2b;
+            color: #a9b7c6;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #6897bb;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .help-section {
+            background: #313335;
+            border: 2px solid #cc7832;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .help-title {
+            color: #cc7832;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .help-content {
+            line-height: 1.8;
+            color: #a9b7c6;
+        }
+
+        .help-step {
+            margin: 10px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+
+        .help-step::before {
+            content: "▸";
+            position: absolute;
+            left: 8px;
+            color: #6897bb;
+            font-weight: bold;
+        }
+
+        .help-important {
+            background: #3c3f41;
+            padding: 12px;
+            border-left: 4px solid #cc7832;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr 400px;
+            gap: 20px;
+        }
+
+        .panel {
+            background: #313335;
+            border: 1px solid #3c3f41;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        h2 {
+            color: #cc7832;
+            font-size: 16px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #3c3f41;
+            padding-bottom: 8px;
+        }
+
+        /* Training Section */
+        .training-required {
+            background: #3c3f41;
+            border: 2px dashed #cc7832;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .training-required h3 {
+            color: #cc7832;
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+
+        .training-required p {
+            color: #a9b7c6;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        /* Elevator Visualization */
+        .viz-container {
+            display: block;
+        }
+
+        .elevator-shaft {
+            position: relative;
+            width: 120px;
+            height: 300px;
+            background: #1e1e1e;
+            border: 2px solid #555;
+            margin: 0 auto;
+            border-radius: 4px;
+        }
+
+        .floor-marker {
+            position: absolute;
+            width: 100%;
+            height: 100px;
+            border-bottom: 2px dashed #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #888;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .elevator-car {
+            position: absolute;
+            width: 100px;
+            height: 80px;
+            background: linear-gradient(135deg, #6897bb, #4a7ba7);
+            border: 3px solid #cc7832;
+            border-radius: 6px;
+            left: 10px;
+            transition: bottom 0.8s ease-in-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .elevator-car.stuck {
+            background: linear-gradient(135deg, #cc0000, #990000);
+            animation: shake 0.5s infinite;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-3px); }
+            75% { transform: translateX(3px); }
+        }
+
+        /* State Display */
+        .state-box {
+            background: #3c3f41;
+            border-radius: 6px;
+            padding: 15px;
+        }
+
+        .state-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .state-item {
+            background: #2b2b2b;
+            padding: 12px;
+            border-radius: 4px;
+            border-left: 3px solid #6897bb;
+        }
+
+        .state-label {
+            color: #9876aa;
+            font-size: 11px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        .state-value {
+            color: #a9b7c6;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        /* Action & Reward under elevator */
+        .action-reward-box {
+            margin-top: 20px;
+            display: grid;
+            gap: 10px;
+        }
+
+        .action-display {
+            background: #3c3f41;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #cc7832;
+        }
+
+        .action-label {
+            color: #9876aa;
+            font-size: 11px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .action-value {
+            color: #cc7832;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .reward-display {
+            background: #3c3f41;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #6897bb;
+            transition: all 0.3s;
+        }
+
+        .reward-display.positive {
+            border-left-color: #629755;
+            background: #2d4a2e;
+        }
+
+        .reward-display.negative {
+            border-left-color: #cc0000;
+            background: #4a2d2d;
+        }
+
+        .reward-label {
+            color: #9876aa;
+            font-size: 11px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .reward-value {
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            color: #a9b7c6;
+        }
+
+        /* Controls */
+        .button-group {
+            display: grid;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        button {
+            background: #365880;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        button:hover:not(:disabled) {
+            background: #4a7ba7;
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button.active {
+            background: #629755;
+        }
+
+        button.train-btn {
+            background: #cc7832;
+            font-size: 16px;
+            padding: 15px;
+        }
+
+        button.train-btn:hover:not(:disabled) {
+            background: #e88f3c;
+        }
+
+        button.reset-btn {
+            background: #cc0000;
+        }
+
+        button.reset-btn:hover:not(:disabled) {
+            background: #dd1111;
+        }
+
+        .floor-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        /* Training Progress */
+        .progress-section {
+            margin-top: 15px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #3c3f41;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #629755, #6897bb);
+            transition: width 0.3s;
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 8px;
+            color: #6897bb;
+            font-weight: bold;
+        }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            gap: 8px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: #3c3f41;
+            border-radius: 4px;
+        }
+
+        .stat-label {
+            color: #9876aa;
+            font-size: 13px;
+        }
+
+        .stat-value {
+            color: #6897bb;
+            font-weight: bold;
+        }
+
+        /* Q-Values */
+        .q-values {
+            display: grid;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .q-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: #3c3f41;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .q-action {
+            color: #cc7832;
+            font-weight: bold;
+        }
+
+        .q-value {
+            color: #6897bb;
+            font-weight: bold;
+        }
+
+        /* Policy Map */
+        .policy-map {
+            font-size: 12px;
+            line-height: 1.8;
+            background: #3c3f41;
+            padding: 12px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .policy-item {
+            padding: 4px 0;
+            border-bottom: 1px solid #2b2b2b;
+        }
+
+        .policy-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Log */
+        .log-box {
+            background: #1e1e1e;
+            border: 1px solid #3c3f41;
+            border-radius: 4px;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            margin-top: 10px;
+        }
+
+        .log-entry {
+            padding: 2px 0;
+            color: #a9b7c6;
+        }
+
+        .log-entry.info {
+            color: #6897bb;
+        }
+
+        .log-entry.success {
+            color: #629755;
+        }
+
+        .log-entry.error {
+            color: #cc0000;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            .viz-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏢 SARSA Elevator Control System</h1>
+
+        <!-- Help Section -->
+        <div class="help-section">
+            <div class="help-title">
+                <span>📖</span>
+                <span>How to Use This System</span>
+            </div>
+            <div class="help-content">
+                <div class="help-important">
+                    <strong>⚠️ IMPORTANT:</strong> You must train the agent first before using either Manual or Auto mode!
+                </div>
+                
+                <div class="help-step">
+                    <strong>Step 1:</strong> Click "🎓 Train Agent" button to run 500 episodes of SARSA learning. This will take a few seconds.
+                </div>
+                
+                <div class="help-step">
+                    <strong>Step 2:</strong> After training completes, choose your mode:
+                    <ul style="margin-top: 8px; padding-left: 20px;">
+                        <li><strong>Manual Mode:</strong> Click floor buttons or set request directions to test the learned policy</li>
+                        <li><strong>Auto Mode:</strong> Watch the agent continuously handle random passenger requests</li>
+                    </ul>
+                </div>
+                
+                <div class="help-step">
+                    <strong>Step 3:</strong> Observe the agent's decisions in real-time:
+                    <ul style="margin-top: 8px; padding-left: 20px;">
+                        <li>Current state is shown beside the elevator</li>
+                        <li>Selected action and reward appear below the elevator</li>
+                        <li>Q-values show the learned preferences for each action</li>
+                    </ul>
+                </div>
+
+                <div class="help-step">
+                    <strong>Understanding Manual Controls:</strong>
+                    <ul style="margin-top: 8px; padding-left: 20px;">
+                        <li><strong>Call Floor:</strong> Simulates a passenger calling the elevator. If the target floor is above current position, it sets "RequestsAbove"; if below, sets "RequestsBelow". The agent then decides the best action (Up/Down/Stay).</li>
+                        <li><strong>Set Request Direction:</strong> Manually configure the passenger request state without calling a specific floor. This lets you test how the agent responds to different request scenarios.</li>
+                        <li><strong>Make Elevator Stuck:</strong> Simulates an elevator malfunction. When stuck, the agent can ONLY choose the "Reset" action (Up/Down/Stay are illegal).</li>
+                        <li><strong>Reset Stuck Elevator:</strong> Attempts to fix the stuck elevator. Has 70% success rate (+20 reward) or 30% failure rate (-2 reward).</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <!-- Left Panel: Training & Controls -->
+            <div class="panel">
+                <h2>Training & Control</h2>
+                
+                <button onclick="startTraining()" id="trainBtn" class="train-btn">
+                    🎓 Train Agent (500 Episodes)
+                </button>
+
+                <div class="progress-section" id="progressSection" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-text">
+                        <span id="episodeCount">0</span> / 500 episodes
+                    </div>
+                </div>
+
+                <!-- Mode Selection (hidden until trained) -->
+                <div id="modeControls" class="hidden">
+                    <h2 style="margin-top: 20px;">Operation Mode</h2>
+                    <div class="button-group">
+                        <button onclick="toggleMode()" id="modeBtn">
+                            Switch to Auto Mode
+                        </button>
+                    </div>
+
+                    <!-- Manual Controls -->
+                    <div id="manualControls">
+                        <h2 style="margin-top: 20px;">Call Floor (Simulates Passenger)</h2>
+                        <p style="font-size: 11px; color: #888; margin-bottom: 10px;">
+                            Click a floor to simulate a passenger request. Agent decides Up/Down/Stay.
+                        </p>
+                        <div class="floor-buttons">
+                            <button onclick="callFloor(1)">Floor 1</button>
+                            <button onclick="callFloor(2)">Floor 2</button>
+                            <button onclick="callFloor(3)">Floor 3</button>
+                        </div>
+
+                        <h2 style="margin-top: 20px;">Set Request Direction</h2>
+                        <p style="font-size: 11px; color: #888; margin-bottom: 10px;">
+                            Manually set passenger request state for testing different scenarios.
+                        </p>
+                        <div class="button-group">
+                            <button onclick="setRequest('RequestsAbove')">⬆ Requests Above</button>
+                            <button onclick="setRequest('RequestsBelow')">⬇ Requests Below</button>
+                            <button onclick="setRequest('NoRequests')">⏸ No Requests</button>
+                        </div>
+
+                        <h2 style="margin-top: 20px;">Emergency Simulation</h2>
+                        <p style="font-size: 11px; color: #888; margin-bottom: 10px;">
+                            Test how agent handles stuck situation (only Reset action allowed when stuck).
+                        </p>
+                        <div class="button-group">
+                            <button onclick="simulateStuck()" style="background: #cc7832;">
+                                ⚠️ Make Elevator Stuck
+                            </button>
+                            <button onclick="resetElevator()" class="reset-btn">
+                                🔧 Attempt Reset (70% success)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="log-box" id="logBox"></div>
+            </div>
+
+            <!-- Center Panel: Elevator Visualization -->
+            <div class="panel">
+                <h2>Elevator Simulation</h2>
+                
+                <!-- Training Required Message -->
+                <div id="trainingRequired" class="training-required">
+                    <h3>🎓 Training Required</h3>
+                    <p>Please train the agent first by clicking the "Train Agent" button on the left panel.</p>
+                    <p style="font-size: 13px; color: #888;">The agent needs to learn optimal policies through 500 episodes of SARSA learning before it can control the elevator.</p>
+                </div>
+
+                <!-- Simulation Content (hidden until trained) -->
+                <div id="simulationContent" class="hidden">
+                    <div class="viz-container">
+                        <!-- Three elevator states side by side -->
+                        <div style="display: flex; gap: 15px; justify-content: center; margin-bottom: 20px;">
+                            <!-- Previous State -->
+                            <div style="text-align: center;">
+                                <h3 style="color: #888; font-size: 13px; margin-bottom: 10px;">Previous State</h3>
+                                <div class="elevator-shaft" style="width: 100px; height: 300px;">
+                                    <div class="floor-marker" style="bottom: 200px; height: 100px; font-size: 11px;">F3</div>
+                                    <div class="floor-marker" style="bottom: 100px; height: 100px; font-size: 11px;">F2</div>
+                                    <div class="floor-marker" style="bottom: 0px; height: 100px; font-size: 11px;">F1</div>
+                                    <div class="elevator-car" id="elevatorCarPrev" style="width: 80px; height: 80px; font-size: 24px; left: 10px; opacity: 0.5;">1</div>
+                                </div>
+                                <div style="margin-top: 10px; font-size: 11px; color: #888;">
+                                    <div>Req: <span id="prevRequest">—</span></div>
+                                    <div>Stuck: <span id="prevStuck">—</span></div>
+                                </div>
+                            </div>
+
+                            <!-- Current State (Main) -->
+                            <div style="text-align: center;">
+                                <h3 style="color: #cc7832; font-size: 14px; margin-bottom: 10px;">Current State</h3>
+                                <div class="elevator-shaft" style="width: 120px; height: 300px;">
+                                    <div class="floor-marker" style="bottom: 200px; height: 100px; font-size: 12px;">Floor 3</div>
+                                    <div class="floor-marker" style="bottom: 100px; height: 100px; font-size: 12px;">Floor 2</div>
+                                    <div class="floor-marker" style="bottom: 0px; height: 100px; font-size: 12px;">Floor 1</div>
+                                    <div class="elevator-car" id="elevatorCar" style="width: 100px; height: 80px; font-size: 28px; left: 10px;">1</div>
+                                </div>
+                            </div>
+
+                            <!-- Next State Preview -->
+                            <div style="text-align: center;">
+                                <h3 style="color: #6897bb; font-size: 13px; margin-bottom: 10px;">Next State</h3>
+                                <div class="elevator-shaft" style="width: 100px; height: 300px;">
+                                    <div class="floor-marker" style="bottom: 200px; height: 100px; font-size: 11px;">F3</div>
+                                    <div class="floor-marker" style="bottom: 100px; height: 100px; font-size: 11px;">F2</div>
+                                    <div class="floor-marker" style="bottom: 0px; height: 100px; font-size: 11px;">F1</div>
+                                    <div class="elevator-car" id="elevatorCarNext" style="width: 80px; height: 80px; font-size: 24px; left: 10px; opacity: 0.5; border-style: dashed;">1</div>
+                                </div>
+                                <div style="margin-top: 10px; font-size: 11px; color: #6897bb;">
+                                    <div>Req: <span id="nextRequest">—</span></div>
+                                    <div>Stuck: <span id="nextStuck">—</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action & Reward below elevators -->
+                        <div class="action-reward-box">
+                            <div class="action-display">
+                                <div class="action-label">Current Action</div>
+                                <div class="action-value" id="actionDisplay">—</div>
+                            </div>
+
+                            <div class="reward-display" id="rewardDisplay">
+                                <div class="reward-label">Reward Received</div>
+                                <div class="reward-value" id="rewardValue">0</div>
+                            </div>
+                        </div>
+
+                        <!-- Current State Details -->
+                        <div class="state-box" style="margin-top: 20px;">
+                            <h2 style="margin-top: 0;">State Details</h2>
+                            <div class="state-grid">
+                                <div class="state-item">
+                                    <div class="state-label">Floor</div>
+                                    <div class="state-value" id="stateFloor">1</div>
+                                </div>
+                                <div class="state-item">
+                                    <div class="state-label">Elevator Status</div>
+                                    <div class="state-value" id="stateStatus">AtFloor</div>
+                                </div>
+                                <div class="state-item">
+                                    <div class="state-label">Request Direction</div>
+                                    <div class="state-value" id="stateRequest">NoRequests</div>
+                                </div>
+                                <div class="state-item">
+                                    <div class="state-label">Stuck Flag</div>
+                                    <div class="state-value" id="stateStuck">False</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Q-Values & Stats -->
+            <div class="panel">
+                <div id="resultsPanel" class="hidden">
+                    <h2>Q-Values (Current State)</h2>
+                    <p style="font-size: 11px; color: #888; margin-bottom: 10px;">
+                        Learned values for each legal action. When stuck, only "Reset" is legal.
+                    </p>
+                    <div class="q-values" id="qValues">
+                        <div class="q-item">
+                            <span class="q-action">Stay:</span>
+                            <span class="q-value">0.00</span>
+                        </div>
+                    </div>
+
+                    <h2 style="margin-top: 20px;">Performance Statistics</h2>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">Total Steps:</span>
+                            <span class="stat-value" id="totalSteps">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Total Reward:</span>
+                            <span class="stat-value" id="totalReward">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Avg Reward/Step:</span>
+                            <span class="stat-value" id="avgReward">0.00</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Successful Resets:</span>
+                            <span class="stat-value" id="resetCount">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Times Stuck:</span>
+                            <span class="stat-value" id="stuckCount">0</span>
+                        </div>
+                    </div>
+
+                    <h2 style="margin-top: 20px;">Learned Policy</h2>
+                    <div class="policy-map" id="policyMap">
+                        <div style="color: #888; text-align: center;">Policy will appear after training...</div>
+                    </div>
+                </div>
+
+                <div id="waitingMessage" style="text-align: center; padding: 40px 20px; color: #888;">
+                    <div style="font-size: 48px; margin-bottom: 15px;">⏳</div>
+                    <p>Train the agent to see Q-values, statistics, and learned policy.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =========================================================
+        // 1. PARAMETERS (matching pseudocode)
+        // =========================================================
+        const alpha = 0.1;
+        const gamma = 0.9;
+        let epsilon = 0.1;
+
+        const RESET_SUCCESS_PROB = 0.7;
+        const STUCK_PROB = 0.05;
+        const NEW_PASSENGER_PROB = 0.3;
+
+        // =========================================================
+        // 2. STATE & Q-TABLE
+        // =========================================================
+        let Q = {};
+        let currentState = {
+            floor: 1,
+            status: 'AtFloor',
+            requestDirection: 'NoRequests',
+            stuck: false
+        };
+
+        let previousState = {...currentState};
+        let nextStatePreview = {...currentState};
+
+        let isAutoMode = false;
+        let isRunning = false;
+        let isTrained = false;
+        let totalSteps = 0;
+        let totalReward = 0;
+        let resetSuccessCount = 0;
+        let stuckCount = 0;
+
+        // =========================================================
+        // 3. UTILITY FUNCTIONS
+        // =========================================================
+        function stateToString(state) {
+            return `${state.floor},${state.status},${state.requestDirection},${state.stuck}`;
+        }
+
+        function getQValue(state, action) {
+            const key = `${stateToString(state)},${action}`;
+            return Q[key] || 0;
+        }
+
+        function setQValue(state, action, value) {
+            const key = `${stateToString(state)},${action}`;
+            Q[key] = value;
+        }
+
+        function legalActions(state) {
+            if (state.stuck) return ['Reset'];
+            
+            const actions = ['Stay'];
+            if (state.floor < 3) actions.push('Up');
+            if (state.floor > 1) actions.push('Down');
+            return actions;
+        }
+
+        function epsilonGreedy(state) {
+            const actions = legalActions(state);
+            
+            if (Math.random() < epsilon) {
+                return actions[Math.floor(Math.random() * actions.length)];
+            }
+            
+            let maxQ = -Infinity;
+            let bestActions = [];
+            
+            for (const action of actions) {
+                const q = getQValue(state, action);
+                if (q > maxQ) {
+                    maxQ = q;
+                    bestActions = [action];
+                } else if (q === maxQ) {
+                    bestActions.push(action);
+                }
+            }
+            
+            return bestActions[Math.floor(Math.random() * bestActions.length)];
+        }
+
+        // =========================================================
+        // 4. ENVIRONMENT STEP (exact pseudocode logic)
+        // =========================================================
+        function step(state, action) {
+            const nextState = {
+                floor: state.floor,
+                status: 'AtFloor',
+                requestDirection: state.requestDirection,
+                stuck: state.stuck
+            };
+            let reward = 0;
+
+            // Case 1: Elevator is stuck
+            if (state.stuck) {
+                if (action === 'Reset') {
+                    if (Math.random() < RESET_SUCCESS_PROB) {
+                        nextState.stuck = false;
+                        reward = 20;
+                        resetSuccessCount++;
+                    } else {
+                        reward = -2;
+                    }
+                } else {
+                    reward = -5;  // Illegal action while stuck
+                }
+                return { nextState, reward };
+            }
+
+            // Case 2: Normal operation
+            if (action === 'Up') {
+                nextState.floor = Math.min(state.floor + 1, 3);
+                // Check if movement is unnecessary
+                if (state.requestDirection === 'NoRequests' || state.requestDirection !== 'RequestsAbove') {
+                    reward = -5;  // Unnecessary move up
+                } else {
+                    reward = 10;  // Moving toward waiting passengers
+                }
+            } else if (action === 'Down') {
+                nextState.floor = Math.max(state.floor - 1, 1);
+                // Check if movement is unnecessary
+                if (state.requestDirection === 'NoRequests' || state.requestDirection !== 'RequestsBelow') {
+                    reward = 0;  // Unnecessary move down (neutral)
+                } else {
+                    reward = 10;  // Moving toward waiting passengers
+                }
+            } else if (action === 'Stay') {
+                // Stay penalty based on floor
+                if (state.floor === 1) {
+                    reward = 0;  // Neutral for staying at floor 1
+                } else {
+                    reward = -2;  // Penalty for staying at floors 2 or 3
+                }
+            }
+
+            // Passenger arrival dynamics
+            if (Math.random() < NEW_PASSENGER_PROB) {
+                nextState.requestDirection = Math.random() < 0.5 ? 
+                    'RequestsAbove' : 'RequestsBelow';
+            } else if (Math.random() < 0.1) {
+                nextState.requestDirection = 'NoRequests';
+            }
+
+            // On-board destination reward (only if reward is still 0 and moving)
+            if ((action === 'Up' || action === 'Down') && 
+                reward === 0 && 
+                state.requestDirection !== 'NoRequests') {
+                reward = 8;  // Moving toward on-board destination
+            }
+
+            // Random elevator failure
+            if (Math.random() < STUCK_PROB) {
+                nextState.stuck = true;
+                stuckCount++;
+            }
+
+            return { nextState, reward };
+        }
+
+        // =========================================================
+        // 5. TRAINING FUNCTION
+        // =========================================================
+        async function startTraining() {
+            const btn = document.getElementById('trainBtn');
+            btn.disabled = true;
+            btn.textContent = '🎓 Training in progress...';
+            
+            document.getElementById('progressSection').style.display = 'block';
+            
+            Q = {};
+            const episodes = 500;
+            const maxSteps = 50;
+
+            addLog('Starting SARSA training...', 'info');
+
+            for (let ep = 0; ep < episodes; ep++) {
+                const initialReq = ['RequestsAbove', 'RequestsBelow', 'NoRequests'][
+                    Math.floor(Math.random() * 3)
+                ];
+                
+                let state = {
+                    floor: 1,
+                    status: 'AtFloor',
+                    requestDirection: initialReq,
+                    stuck: false
+                };
+
+                let action = epsilonGreedy(state);
+
+                for (let stepCount = 0; stepCount < maxSteps; stepCount++) {
+                    const { nextState, reward } = step(state, action);
+
+                    // Early termination on reset success
+                    if (state.stuck && !nextState.stuck) {
+                        const qOld = getQValue(state, action);
+                        setQValue(state, action, qOld + alpha * (reward - qOld));
+                        break;
+                    }
+
+                    const nextAction = epsilonGreedy(nextState);
+
+                    // SARSA update
+                    const qCurrent = getQValue(state, action);
+                    const qNext = getQValue(nextState, nextAction);
+                    const newQ = qCurrent + alpha * (reward + gamma * qNext - qCurrent);
+                    setQValue(state, action, newQ);
+
+                    state = nextState;
+                    action = nextAction;
+                }
+
+                if ((ep + 1) % 50 === 0) {
+                    document.getElementById('episodeCount').textContent = ep + 1;
+                    document.getElementById('progressFill').style.width = 
+                        ((ep + 1) / episodes * 100) + '%';
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                }
+            }
+
+            document.getElementById('episodeCount').textContent = episodes;
+            document.getElementById('progressFill').style.width = '100%';
+            btn.textContent = '✓ Training Complete!';
+            btn.style.background = '#629755';
+            
+            addLog('✓ Training completed successfully! Agent is ready.', 'success');
+            
+            isTrained = true;
+            showSimulation();
+        }
+
+        function showSimulation() {
+            // Hide training required message
+            document.getElementById('trainingRequired').classList.add('hidden');
+            
+            // Show simulation content
+            document.getElementById('simulationContent').classList.remove('hidden');
+            document.getElementById('modeControls').classList.remove('hidden');
+            document.getElementById('resultsPanel').classList.remove('hidden');
+            document.getElementById('waitingMessage').classList.add('hidden');
+            
+            // Initialize display
+            updatePolicyMap();
+            updateVisualization('Stay', 0);
+            updateQValuesDisplay();
+            
+            addLog('Ready for operation. Choose Manual or Auto mode.', 'info');
+        }
+
+        // =========================================================
+        // 6. SIMULATION STEP
+        // =========================================================
+        async function simulateStep() {
+            if (!isRunning || !isTrained) return;
+
+            // Save previous state
+            previousState = {...currentState};
+
+            const action = epsilonGreedy(currentState);
+            const { nextState, reward } = step(currentState, action);
+
+            totalSteps++;
+            totalReward += reward;
+
+            // Preview next state
+            nextStatePreview = {...nextState};
+
+            updateVisualization(action, reward);
+            
+            const logClass = reward > 0 ? 'success' : reward < 0 ? 'error' : '';
+            addLog(`Action: ${action} | Reward: ${reward > 0 ? '+' : ''}${reward}`, logClass);
+
+            currentState = nextState;
+            updateQValuesDisplay();
+
+            if (isAutoMode) {
+                setTimeout(simulateStep, 1200);
+            }
+        }
+
+        // =========================================================
+        // 7. UI UPDATE FUNCTIONS
+        // =========================================================
+        function updateVisualization(action, reward) {
+            // Update previous state display
+            const prevCar = document.getElementById('elevatorCarPrev');
+            prevCar.style.bottom = ((previousState.floor - 1) * 100 + 10) + 'px';
+            prevCar.textContent = previousState.floor;
+            prevCar.className = previousState.stuck ? 'elevator-car stuck' : 'elevator-car';
+            prevCar.style.opacity = '0.5';
+            prevCar.style.width = '80px';
+            prevCar.style.height = '80px';
+            prevCar.style.fontSize = '24px';
+            
+            document.getElementById('prevRequest').textContent = 
+                previousState.requestDirection.replace('Requests', '');
+            document.getElementById('prevStuck').textContent = previousState.stuck;
+
+            // Update current state display
+            const car = document.getElementById('elevatorCar');
+            const floor = currentState.floor;
+            
+            car.style.bottom = ((floor - 1) * 100 + 10) + 'px';
+            car.textContent = floor;
+            car.className = currentState.stuck ? 'elevator-car stuck' : 'elevator-car';
+
+            // Update next state preview
+            const nextCar = document.getElementById('elevatorCarNext');
+            nextCar.style.bottom = ((nextStatePreview.floor - 1) * 100 + 10) + 'px';
+            nextCar.textContent = nextStatePreview.floor;
+            nextCar.className = nextStatePreview.stuck ? 'elevator-car stuck' : 'elevator-car';
+            nextCar.style.opacity = '0.5';
+            nextCar.style.width = '80px';
+            nextCar.style.height = '80px';
+            nextCar.style.fontSize = '24px';
+            nextCar.style.borderStyle = 'dashed';
+            
+            document.getElementById('nextRequest').textContent = 
+                nextStatePreview.requestDirection.replace('Requests', '');
+            document.getElementById('nextStuck').textContent = nextStatePreview.stuck;
+
+            // Update action and reward
+            document.getElementById('actionDisplay').textContent = action;
+            document.getElementById('rewardValue').textContent = reward > 0 ? '+' + reward : reward;
+            
+            const rewardBox = document.getElementById('rewardDisplay');
+            rewardBox.className = 'reward-display';
+            if (reward > 0) rewardBox.classList.add('positive');
+            if (reward < 0) rewardBox.classList.add('negative');
+
+            // Update state details
+            document.getElementById('stateFloor').textContent = currentState.floor;
+            document.getElementById('stateStatus').textContent = currentState.status;
+            document.getElementById('stateRequest').textContent = currentState.requestDirection;
+            document.getElementById('stateStuck').textContent = currentState.stuck;
+
+            // Update statistics
+            document.getElementById('totalSteps').textContent = totalSteps;
+            document.getElementById('totalReward').textContent = totalReward.toFixed(1);
+            document.getElementById('avgReward').textContent = 
+                (totalReward / Math.max(totalSteps, 1)).toFixed(2);
+            document.getElementById('resetCount').textContent = resetSuccessCount;
+            document.getElementById('stuckCount').textContent = stuckCount;
+        }
+
+        function updateQValuesDisplay() {
+            const actions = legalActions(currentState);
+            const html = actions.map(action => {
+                const q = getQValue(currentState, action).toFixed(2);
+                return `
+                    <div class="q-item">
+                        <span class="q-action">${action}:</span>
+                        <span class="q-value">${q}</span>
+                    </div>
+                `;
+            }).join('');
+            document.getElementById('qValues').innerHTML = html;
+        }
+
+        function updatePolicyMap() {
+            const states = [
+                [1, 'RequestsAbove'], [2, 'RequestsAbove'], [3, 'RequestsAbove'],
+                [1, 'RequestsBelow'], [2, 'RequestsBelow'], [3, 'RequestsBelow'],
+                [1, 'NoRequests'], [2, 'NoRequests'], [3, 'NoRequests']
+            ];
+
+            const html = states.map(([floor, req]) => {
+                const state = { floor, status: 'AtFloor', requestDirection: req, stuck: false };
+                const actions = legalActions(state);
+                const best = actions.reduce((a, b) => 
+                    getQValue(state, a) > getQValue(state, b) ? a : b
+                );
+                const qVal = getQValue(state, best).toFixed(2);
+                return `
+                    <div class="policy-item">
+                        F${floor}-${req.replace('Requests', '')}: 
+                        <strong style="color: #cc7832">${best}</strong> 
+                        <span style="color: #6897bb">(Q=${qVal})</span>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('policyMap').innerHTML = html;
+        }
+
+        function addLog(message, type = '') {
+            const logBox = document.getElementById('logBox');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + type;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logBox.appendChild(entry);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        // =========================================================
+        // 8. CONTROL FUNCTIONS
+        // =========================================================
+        function toggleMode() {
+            if (!isTrained) {
+                addLog('Please train the agent first!', 'error');
+                return;
+            }
+
+            isAutoMode = !isAutoMode;
+            const btn = document.getElementById('modeBtn');
+            
+            if (isAutoMode) {
+                btn.textContent = '⏸ Switch to Manual Mode';
+                btn.classList.add('active');
+                document.getElementById('manualControls').style.opacity = '0.5';
+                document.getElementById('manualControls').style.pointerEvents = 'none';
+                
+                isRunning = true;
+                addLog('Auto mode activated - agent running continuously', 'info');
+                simulateStep();
+            } else {
+                btn.textContent = 'Switch to Auto Mode';
+                btn.classList.remove('active');
+                document.getElementById('manualControls').style.opacity = '1';
+                document.getElementById('manualControls').style.pointerEvents = 'auto';
+                
+                isRunning = false;
+                addLog('Manual mode activated - use controls to test', 'info');
+            }
+        }
+
+        function callFloor(floor) {
+            if (!isTrained) {
+                addLog('Please train the agent first!', 'error');
+                return;
+            }
+
+            if (isAutoMode) {
+                addLog('Cannot manually call floor in Auto mode', 'error');
+                return;
+            }
+
+            if (currentState.stuck) {
+                addLog('Elevator is stuck! Use Reset button.', 'error');
+                return;
+            }
+            
+            // Save previous state
+            previousState = {...currentState};
+
+            if (floor > currentState.floor) {
+                currentState.requestDirection = 'RequestsAbove';
+            } else if (floor < currentState.floor) {
+                currentState.requestDirection = 'RequestsBelow';
+            } else {
+                currentState.requestDirection = 'NoRequests';
+            }
+            
+            addLog(`Floor ${floor} called - Agent deciding action...`, 'info');
+            
+            // Execute one step in manual mode
+            const action = epsilonGreedy(currentState);
+            const { nextState, reward } = step(currentState, action);
+
+            totalSteps++;
+            totalReward += reward;
+
+            // Preview next state
+            nextStatePreview = {...nextState};
+
+            updateVisualization(action, reward);
+            
+            const logClass = reward > 0 ? 'success' : reward < 0 ? 'error' : '';
+            addLog(`Action: ${action} | Reward: ${reward > 0 ? '+' : ''}${reward}`, logClass);
+
+            currentState = nextState;
+            updateQValuesDisplay();
+        }
+
+        function setRequest(direction) {
+            if (!isTrained) {
+                addLog('Please train the agent first!', 'error');
+                return;
+            }
+
+            if (isAutoMode) {
+                addLog('Cannot manually set request in Auto mode', 'error');
+                return;
+            }
+
+            if (currentState.stuck) {
+                addLog('Elevator is stuck! Cannot change requests. Use Reset button first.', 'error');
+                return;
+            }
+
+            // Save previous state
+            previousState = {...currentState};
+
+            currentState.requestDirection = direction;
+            addLog(`Request direction set to: ${direction} - Agent deciding action...`, 'info');
+            
+            // Execute one step in manual mode
+            const action = epsilonGreedy(currentState);
+            const { nextState, reward } = step(currentState, action);
+
+            totalSteps++;
+            totalReward += reward;
+
+            // Preview next state
+            nextStatePreview = {...nextState};
+
+            updateVisualization(action, reward);
+            
+            const logClass = reward > 0 ? 'success' : reward < 0 ? 'error' : '';
+            addLog(`Action: ${action} | Reward: ${reward > 0 ? '+' : ''}${reward}`, logClass);
+
+            currentState = nextState;
+            updateQValuesDisplay();
+        }
+
+        function resetElevator() {
+            if (!isTrained) {
+                addLog('Please train the agent first!', 'error');
+                return;
+            }
+
+            if (isAutoMode) {
+                addLog('Cannot manually reset in Auto mode', 'error');
+                return;
+            }
+
+            if (currentState.stuck) {
+                // Save previous state
+                previousState = {...currentState};
+
+                const action = 'Reset';
+                const { nextState, reward } = step(currentState, action);
+                totalSteps++;
+                totalReward += reward;
+
+                // Preview next state
+                nextStatePreview = {...nextState};
+
+                currentState = nextState;
+                updateVisualization(action, reward);
+                addLog(`Reset ${nextState.stuck ? 'failed' : 'successful'} - Reward: ${reward}`, 
+                    nextState.stuck ? 'error' : 'success');
+                updateQValuesDisplay();
+            } else {
+                addLog('Elevator is not stuck', 'info');
+            }
+        }
+
+        function simulateStuck() {
+            if (!isTrained) {
+                addLog('Please train the agent first!', 'error');
+                return;
+            }
+
+            if (isAutoMode) {
+                addLog('Cannot manually trigger stuck in Auto mode', 'error');
+                return;
+            }
+
+            if (currentState.stuck) {
+                addLog('Elevator is already stuck! Use Reset button.', 'error');
+                return;
+            }
+
+            // Save previous state
+            previousState = {...currentState};
+
+            // Manually trigger stuck condition
+            currentState.stuck = true;
+            stuckCount++;
+
+            // When stuck, agent can ONLY choose Reset action
+            const action = epsilonGreedy(currentState); // Should return 'Reset'
+
+            // Preview next state - agent will attempt reset
+            const { nextState: previewState } = step(currentState, 'Reset');
+            nextStatePreview = {...previewState};
+
+            updateVisualization('Stuck!', -10);
+            addLog('⚠️ Elevator is now STUCK! Only legal action: Reset', 'error');
+            addLog(`Agent will choose: ${action} (Q-value: ${getQValue(currentState, action).toFixed(2)})`, 'info');
+            updateQValuesDisplay();
+        }
+
+        // Initialize log
+        addLog('System ready. Train the agent to begin.', 'info');
+    </script>
+</body>
+</html>
